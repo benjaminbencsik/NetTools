@@ -2,6 +2,7 @@ package com.benbencsik.nettools;
 
 import java.net.*;
 import java.util.*;
+import com.sun.net.httpserver.HttpServer;
 
 /** No third-party test framework; deterministic calculations and loopback sockets. */
 public final class NetworkToolsTest {
@@ -38,6 +39,9 @@ public final class NetworkToolsTest {
         boolean credentialsRejected=false;
         try { NetworkTools.webUrl("https://user:password@example.com"); } catch (IllegalArgumentException e) { credentialsRejected=true; }
         expect(credentialsRejected,"URL credentials rejected");
+        boolean protocolRejected=false;
+        try { NetworkTools.webUrl("ftp://example.com/file"); } catch (IllegalArgumentException e) { protocolRejected=true; }
+        expect(protocolRejected,"Non-HTTP schemes rejected");
         InetAddress loopback=InetAddress.getByName("127.0.0.1");
         contains(NetworkTools.dns("127.0.0.1"),"127.0.0.1");
         try (ServerSocket listener=new ServerSocket(0,10,loopback)) {
@@ -47,6 +51,22 @@ public final class NetworkToolsTest {
         int closedPort;
         try (ServerSocket temporary=new ServerSocket(0,10,loopback)) { closedPort=temporary.getLocalPort(); }
         expect(NetworkTools.connect(loopback,closedPort,500).equals("REFUSED"),"Closed loopback socket is refused");
+        HttpServer server=HttpServer.create(new InetSocketAddress(loopback,0),0);
+        server.createContext("/ready",exchange -> {
+            exchange.getResponseHeaders().add("X-NetTools-Test","verified");
+            exchange.sendResponseHeaders(exchange.getRequestMethod().equals("HEAD") ? 204 : 405,-1);
+            exchange.close();
+        });
+        server.createContext("/redirect",exchange -> {
+            exchange.getResponseHeaders().add("Location","/ready");
+            exchange.sendResponseHeaders(302,-1); exchange.close();
+        });
+        server.start();
+        try {
+            String http=NetworkTools.http("http://127.0.0.1:"+server.getAddress().getPort()+"/redirect");
+            contains(http,"HTTP 302"); contains(http,"HTTP 204"); contains(http.toLowerCase(Locale.US),"x-nettools-test: verified");
+            contains(http,"Method: HEAD");
+        } finally { server.stop(0); }
         System.out.println("PASS: " + checks + " network and input checks");
     }
 }

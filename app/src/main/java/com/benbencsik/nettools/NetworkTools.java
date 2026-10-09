@@ -139,6 +139,9 @@ public final class NetworkTools {
 
     public static URL webUrl(String input) throws MalformedURLException {
         String value = input.trim();
+        if (value.contains("://") && !value.matches("(?i)^https?://.*")) {
+            throw new IllegalArgumentException("Only HTTP and HTTPS URLs are supported.");
+        }
         if (!value.matches("(?i)^https?://.*")) value = "https://" + value;
         URL url = new URL(value);
         if (!(url.getProtocol().equals("http") || url.getProtocol().equals("https")) ||
