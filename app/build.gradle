@@ -1,0 +1,31 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.benbencsik.nettools'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.benbencsik.nettools'
+        minSdk 26
+        targetSdk 35
+        versionCode Integer.parseInt(System.getenv('NETTOOLS_VERSION_CODE') ?: '1')
+        versionName System.getenv('NETTOOLS_VERSION_NAME') ?: '0.1.0'
+    }
+    signingConfigs {
+        if (System.getenv('NETTOOLS_KEYSTORE_PATH')) {
+            release {
+                storeFile file(System.getenv('NETTOOLS_KEYSTORE_PATH'))
+                storePassword System.getenv('NETTOOLS_STORE_PASSWORD')
+                keyAlias System.getenv('NETTOOLS_KEY_ALIAS')
+                keyPassword System.getenv('NETTOOLS_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        debug { applicationIdSuffix '.preview'; versionNameSuffix '-preview' }
+        release {
+            if (System.getenv('NETTOOLS_KEYSTORE_PATH')) signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
